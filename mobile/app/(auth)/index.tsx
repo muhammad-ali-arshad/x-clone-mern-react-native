@@ -35,7 +35,7 @@ export default function Index() {
           {/* Buttons */}
           <View className="flex-col gap-4 mt-8">
 
-            {/* Google */}
+       
             <TouchableOpacity
               className="flex-row items-center justify-center bg-white border border-gray-300 rounded-full py-3 px-6"
               onPress={() => handleSocialAuth("oauth_google")}
