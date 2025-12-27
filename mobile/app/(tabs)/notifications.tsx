@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 const notificationsScreen = () => {
   return (
     <SafeAreaView className='flex-1'>
-      <Text>notificationsScreeen</Text>
+      <Text>nootificationsScreeen</Text>
     </SafeAreaView>
   )
 }
