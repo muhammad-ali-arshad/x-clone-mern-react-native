@@ -84,6 +84,52 @@ const MessagesScreen = () => {
         </View>
       </View>
 
+    
+
+
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}
+      >
+        {conversationsList.map((conversation) => (
+          <TouchableOpacity
+            key={conversation.id}
+            className="flex-row items-center p-4 border-b border-gray-50 active:bg-gray-50"
+            onPress={() => openConversation(conversation)}
+            onLongPress={() => deleteConversation(conversation.id)}
+          >
+            <Image
+              source={{ uri: conversation.user.avatar }}
+              className="size-12 rounded-full mr-3"
+            />
+
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between mb-1">
+                <View className="flex-row items-center gap-1">
+                  <Text className="font-semibold text-gray-900">{conversation.user.name}</Text>
+                  {conversation.user.verified && (
+                    <Feather name="check-circle" size={16} color="#1DA1F2" className="ml-1" />
+                  )}
+                  <Text className="text-gray-500 text-sm ml-1">@{conversation.user.username}</Text>
+                </View>
+                <Text className="text-gray-500 text-sm">{conversation.time}</Text>
+              </View>
+              <Text className="text-sm text-gray-500" numberOfLines={1}>
+                {conversation.lastMessage}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+
+
+
+
+
+
+
  
     </SafeAreaView>
   );
