@@ -125,6 +125,16 @@ const MessagesScreen = () => {
 
 
 
+      
+      {/* Quick Actions */}
+      <View className="px-4 py-2 border-t border-gray-100 bg-gray-50">
+        <Text className="text-xs text-gray-500 text-center">
+          Tap to open • Long press to delete
+        </Text>
+      </View>
+
+
+
 
 
 
