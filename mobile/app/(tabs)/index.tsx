@@ -13,10 +13,14 @@ const HomeScreen = () => {
   const { refetch: refetchPosts } = usePosts();
 
   const handlePullToRefresh = async () => {
-    setIsRefetching(true);
-
-    await refetchPosts();
-    setIsRefetching(false);
+    try {
+      setIsRefetching(true);
+      await refetchPosts();
+    } catch (error) {
+      console.error("Error refreshing posts:", error);
+    } finally {
+      setIsRefetching(false);
+    }
   };
 
   useUserSync();
