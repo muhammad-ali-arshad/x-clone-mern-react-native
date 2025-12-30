@@ -19,12 +19,10 @@ export const useUserSync = ()=>{
         },
         onError:(error: any) => {
             console.error("User sync failed:", error);
-            // Reset ref on error so we can retry if needed
             hasSyncedRef.current = false;
         }
     });
 
-    // Reset sync ref when user signs out
     useEffect(() => {
         if (isLoaded && !isSignedIn) {
             hasSyncedRef.current = false;
@@ -32,11 +30,7 @@ export const useUserSync = ()=>{
     }, [isLoaded, isSignedIn]);
 
     useEffect(()=>{
-        // Only sync if:
-        // 1. Auth is loaded
-        // 2. User is signed in
-        // 3. We haven't synced yet (or previous sync failed)
-        // 4. Mutation is not currently in progress
+
         if (isLoaded && isSignedIn && !hasSyncedRef.current && !syncUserMutation.isPending) {
             syncUserMutation.mutate();
         }

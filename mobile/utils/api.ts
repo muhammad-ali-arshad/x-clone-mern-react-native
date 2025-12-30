@@ -19,7 +19,6 @@ import {useMemo} from "react";
           }
         } catch (error) {
           console.error("Error getting token:", error);
-          // Continue without token - server will handle auth errors
         }
         return config;
       },
@@ -28,19 +27,15 @@ import {useMemo} from "react";
       }
     );
 
-    // Add response interceptor for error handling
     api.interceptors.response.use(
       (response) => response,
       (error) => {
-        // Handle common errors
         if (error.response) {
-          // Server responded with error status
           console.error("API Error:", error.response.status, error.response.data);
         } else if (error.request) {
-          // Request was made but no response received
           console.error("Network Error:", error.request);
         } else {
-          // Something else happened
+
           console.error("Error:", error.message);
         }
         return Promise.reject(error);
@@ -52,7 +47,6 @@ import {useMemo} from "react";
   
   export const useApiClient = (): AxiosInstance => {
     const { getToken } = useAuth();
-    // Memoize the API client to prevent recreation on every render
     return useMemo(() => createApiClient(getToken), [getToken]);
   };
   
