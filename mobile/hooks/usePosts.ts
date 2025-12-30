@@ -1,63 +1,53 @@
-import { useQuery } from "@tanstack/react-query";
-import { useApiClient, postApi } from "@/utils/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useApiClient, postApi } from "../utils/api";
 
-export interface Post {
-  _id: string;
-  user: {
-    _id: string;
-    username: string;
-    firstName: string;
-    lastName: string;
-    profilePicture: string;
-  };
-  content: string;
-  image: string;
-  likes: string[];
-  comments: Array<{
-    _id: string;
-    user: {
-      _id: string;
-      username: string;
-      firstName: string;
-      lastName: string;
-      profilePicture: string;
-    };
-    content: string;
-    createdAt: string;
-  }>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface PostsResponse {
-  posts: Post[];
-}
-
-export const usePosts = () => {
+export const usePosts = (username?: string) => {
   const api = useApiClient();
+  const queryClient = useQueryClient();
 
   const {
-    data,
+    data: postsData,
     isLoading,
     error,
     refetch,
-    isRefetching,
-  } = useQuery<PostsResponse>({
-    queryKey: ["posts"],
-    queryFn: async () => {
-      const response = await postApi.getPosts(api);
-      return response.data;
-    },
-    staleTime: 30000, // Consider data fresh for 30 seconds
-    retry: 2,
+  } = useQuery({
+    queryKey: username ? ["userPosts", username] : ["posts"],
+    queryFn: () => (username ? postApi.getUserPosts(api, username) : postApi.getPosts(api)),
+    select: (response) => response.data.posts,
   });
 
+  const likePostMutation = useMutation({
+    mutationFn: (postId: string) => postApi.likePost(api, postId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      if (username) {
+        queryClient.invalidateQueries({ queryKey: ["userPosts", username] });
+      }
+    },
+  });
+
+  const deletePostMutation = useMutation({
+    mutationFn: (postId: string) => postApi.deletePost(api, postId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      if (username) {
+        queryClient.invalidateQueries({ queryKey: ["userPosts", username] });
+      }
+    },
+  });
+
+  const checkIsLiked = (postLikes: string[], currentUser: any) => {
+    const isLiked = currentUser && postLikes.includes(currentUser._id);
+    return isLiked;
+  };
+
   return {
-    posts: data?.posts || [],
+    posts: postsData || [],
     isLoading,
     error,
     refetch,
-    isRefetching,
+    toggleLike: (postId: string) => likePostMutation.mutate(postId),
+    deletePost: (postId: string) => deletePostMutation.mutate(postId),
+    checkIsLiked,
   };
 };
-
