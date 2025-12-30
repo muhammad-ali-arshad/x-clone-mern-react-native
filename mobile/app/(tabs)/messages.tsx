@@ -27,7 +27,7 @@ const MessagesScreen = () => {
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => {
+        onPress: () => { 
           setConversationsList((prev) => prev.filter((conv) => conv.id !== conversationId));
         },
       },
