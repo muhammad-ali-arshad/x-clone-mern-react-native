@@ -47,7 +47,7 @@ import {useMemo} from "react";
   
   export const useApiClient = (): AxiosInstance => {
     const { getToken } = useAuth();
-    return useMemo(() => createApiClient(getToken), [getToken]);
+     return useMemo(() => createApiClient(getToken), [getToken]);
   };
   
   export const userApi = {
