@@ -1,6 +1,7 @@
 
 import axios, {Axios, AxiosInstance} from "axios";
 import {useAuth} from "@clerk/clerk-expo";
+import {useMemo} from "react";
 
 
 
@@ -9,20 +10,50 @@ import {useAuth} from "@clerk/clerk-expo";
  export const createApiClient = (getToken: () => Promise<string | null>): AxiosInstance => {
     const api = axios.create({ baseURL: API_BASE_URL });
   
-    api.interceptors.request.use(async (config) => {
-      const token = await getToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+    api.interceptors.request.use(
+      async (config) => {
+        try {
+          const token = await getToken();
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
+        } catch (error) {
+          console.error("Error getting token:", error);
+          // Continue without token - server will handle auth errors
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
       }
-      return config;
-    });
+    );
+
+    // Add response interceptor for error handling
+    api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        // Handle common errors
+        if (error.response) {
+          // Server responded with error status
+          console.error("API Error:", error.response.status, error.response.data);
+        } else if (error.request) {
+          // Request was made but no response received
+          console.error("Network Error:", error.request);
+        } else {
+          // Something else happened
+          console.error("Error:", error.message);
+        }
+        return Promise.reject(error);
+      }
+    );
   
     return api;
   };
   
   export const useApiClient = (): AxiosInstance => {
     const { getToken } = useAuth();
-    return createApiClient(getToken);
+    // Memoize the API client to prevent recreation on every render
+    return useMemo(() => createApiClient(getToken), [getToken]);
   };
   
   export const userApi = {
