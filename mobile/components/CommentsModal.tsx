@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 interface CommentsModalProps {
-  selectedPost: Post;
+  selectedPost: Post | null;
   onClose: () => void;
 }
 
@@ -43,7 +43,7 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
           <View className="border-b border-gray-100 bg-white p-4">
             <View className="flex-row">
               <Image
-                source={{ uri: selectedPost.user.profilePicture }}
+                source={{ uri: selectedPost.user.profilePicture || "https://via.placeholder.com/48" }}
                 className="size-12 rounded-full mr-3"
               />
 
@@ -73,11 +73,11 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
           </View>
 
           {/* COMMENTS LIST */}
-          {selectedPost.comments.map((comment) => (
+          {selectedPost.comments?.map((comment) => (
             <View key={comment._id} className="border-b border-gray-100 bg-white p-4">
               <View className="flex-row">
                 <Image
-                  source={{ uri: comment.user.profilePicture }}
+                  source={{ uri: comment.user.profilePicture || "https://via.placeholder.com/40" }}
                   className="w-10 h-10 rounded-full mr-3"
                 />
 
@@ -100,7 +100,7 @@ const CommentsModal = ({ selectedPost, onClose }: CommentsModalProps) => {
           <View className="p-4 border-t border-gray-100">
             <View className="flex-row">
               <Image
-                source={{ uri: currentUser?.profilePicture }}
+                source={{ uri: currentUser?.profilePicture || "https://via.placeholder.com/40" }}
                 className="size-10 rounded-full mr-3"
               />
 

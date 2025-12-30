@@ -10,10 +10,13 @@ export const usePosts = (username?: string) => {
     isLoading,
     error,
     refetch,
+    isRefetching,
   } = useQuery({
     queryKey: username ? ["userPosts", username] : ["posts"],
     queryFn: () => (username ? postApi.getUserPosts(api, username) : postApi.getPosts(api)),
     select: (response) => response.data.posts,
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    retry: 2,
   });
 
   const likePostMutation = useMutation({
@@ -46,6 +49,7 @@ export const usePosts = (username?: string) => {
     isLoading,
     error,
     refetch,
+    isRefetching,
     toggleLike: (postId: string) => likePostMutation.mutate(postId),
     deletePost: (postId: string) => deletePostMutation.mutate(postId),
     checkIsLiked,

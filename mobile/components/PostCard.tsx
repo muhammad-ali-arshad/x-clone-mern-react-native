@@ -9,11 +9,11 @@ interface PostCardProps {
   onDelete: (postId: string) => void;
   onComment: (post: Post) => void;
   isLiked?: boolean;
-  currentUser: User;
+  currentUser?: User;
 }
 
 const PostCard = ({ currentUser, onDelete, onLike, post, isLiked, onComment }: PostCardProps) => {
-  const isOwnPost = post.user._id === currentUser._id;
+  const isOwnPost = currentUser && post.user._id === currentUser._id;
 
   const handleDelete = () => {
     Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
