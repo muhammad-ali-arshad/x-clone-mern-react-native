@@ -5,7 +5,11 @@ import {useMemo} from "react";
 
 
 
- const API_BASE_URL = "https://x-clone-mern-react-native.vercel.app/api"
+ // Use environment variable if available, otherwise fallback to Vercel URL
+ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "https://x-clone-mern-react-native.vercel.app/api"
+
+ // Log the API URL being used (remove in production if needed)
+ console.log("🌐 API Base URL:", API_BASE_URL);
 
  export const createApiClient = (getToken: () => Promise<string | null>): AxiosInstance => {
     const api = axios.create({ baseURL: API_BASE_URL });
@@ -13,6 +17,10 @@ import {useMemo} from "react";
     api.interceptors.request.use(
       async (config) => {
         try {
+          // Add User-Agent to identify as mobile app (prevents Arcjet bot detection)
+          config.headers['User-Agent'] = 'X-Clone-Mobile-App/1.0.0';
+          config.headers['X-Client-Type'] = 'mobile-app';
+          
           const token = await getToken();
           if (token) {
             config.headers.Authorization = `Bearer ${token}`;

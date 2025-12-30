@@ -4,6 +4,15 @@ import { aj } from "../config/arcjet.js";
 
 export const arcjetMiddleware = async (req, res, next) => {
   try {
+    // Allow mobile app requests to bypass bot detection
+    const isMobileApp = req.headers['x-client-type'] === 'mobile-app' || 
+                        req.headers['user-agent']?.includes('X-Clone-Mobile-App');
+    
+    // Skip bot detection for mobile app requests
+    if (isMobileApp) {
+      return next();
+    }
+
     const decision = await aj.protect(req, {
       requested: 1, // each request consumes 1 token
     });
