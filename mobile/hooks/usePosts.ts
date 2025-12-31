@@ -14,20 +14,21 @@ export const usePosts = (username?: string) => {
     queryKey: username ? ["userPosts", username] : ["posts"],
     queryFn: () => (username ? postApi.getUserPosts(api, username) : postApi.getPosts(api)),
     select: (response) => response.data.posts,
-    staleTime: 30000, // Consider data fresh for 30 seconds
-    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    enabled: !!username || true, // Only fetch user posts if username exists, always fetch all posts
+    staleTime: 60000, // Consider data fresh for 60 seconds (prevent refetch loops)
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     retry: (failureCount, error: any) => {
-      // Don't retry on 4xx errors (client errors)
+      // CRITICAL: Don't retry on any client errors (4xx)
       if (error?.response?.status >= 400 && error?.response?.status < 500) {
         return false;
       }
-      // Retry up to 2 times on server errors or network errors
-      return failureCount < 2;
+      // Only retry once on server errors (5xx) or network errors
+      return failureCount < 1;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Max 5s delay
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchOnMount: false, // Don't refetch on mount if data exists
-    refetchOnReconnect: true, // Only refetch on reconnect
+    retryDelay: 2000, // Fixed 2s delay for single retry
+    refetchOnWindowFocus: false, // CRITICAL: Don't refetch on window focus
+    refetchOnMount: false, // CRITICAL: Don't refetch on mount if data exists
+    refetchOnReconnect: false, // CRITICAL: Don't auto-refetch on reconnect (prevents loops)
   });
 
   const likePostMutation = useMutation({

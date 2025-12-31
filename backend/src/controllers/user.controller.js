@@ -47,6 +47,18 @@ export const updateProfile = asyncHandler(async (req, res) => {
 });
 
 export const syncUser = asyncHandler(async (req, res) => {
+  // CRITICAL: Ensure MongoDB connection is established before any DB operations
+  try {
+    const { connectDB } = await import("../config/db.js");
+    await connectDB();
+  } catch (dbError) {
+    console.error("syncUser: MongoDB connection failed:", dbError.message);
+    return res.status(500).json({
+      error: "Database connection failed",
+      message: "Unable to connect to database. Please try again later.",
+    });
+  }
+
   try {
     // Validate request has auth context
     const { userId } = getAuth(req);
@@ -217,11 +229,15 @@ export const syncUser = asyncHandler(async (req, res) => {
     }
   } catch (error) {
     // This should never be reached due to asyncHandler, but defensive coding
-    console.error("Unexpected error in syncUser (outer catch):", error);
-    return res.status(500).json({ 
-      error: "Internal server error",
-      message: "An unexpected error occurred. Please try again later." 
-    });
+    console.error("Unexpected error in syncUser (outer catch):", error?.message || error);
+    
+    // CRITICAL: Always return a response - never let request hang
+    if (!res.headersSent) {
+      return res.status(500).json({ 
+        error: "Internal server error",
+        message: "An unexpected error occurred. Please try again later." 
+      });
+    }
   }
 });
 

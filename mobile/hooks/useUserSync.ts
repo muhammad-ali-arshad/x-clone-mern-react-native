@@ -11,54 +11,31 @@ export const useUserSync = ()=>{
     const api = useApiClient();
     const hasSyncedRef = useRef(false);
     const hasAttemptedRef = useRef(false);
-    const retryCountRef = useRef(0);
-    const MAX_RETRIES = 2; // Maximum 2 retries (3 total attempts)
+    const syncTriggeredRef = useRef(false); // Prevent multiple triggers
     
     const syncUserMutation = useMutation({
         mutationFn: () => userApi.syncUser(api),
-        retry: false, // Disable react-query retry - we handle it manually
+        retry: false, // CRITICAL: Disable ALL automatic retries
         onSuccess: (response: any) => {
             console.log("✅ User synced successfully: ", response.data?.message || "User synced");
             hasSyncedRef.current = true;
             hasAttemptedRef.current = true;
-            retryCountRef.current = 0; // Reset retry count on success
         },
         onError:(error: any) => {
             const status = error?.response?.status;
             const errorMessage = error?.response?.data?.error || error?.message;
             
-            console.error("❌ User sync failed:", {
+            console.error("❌ User sync failed (no retries):", {
                 status,
                 error: errorMessage,
-                attempt: retryCountRef.current + 1,
             });
             
-            // Don't retry on client errors (4xx) - these are permanent
-            if (status >= 400 && status < 500) {
-                hasAttemptedRef.current = true;
-                hasSyncedRef.current = false;
-                retryCountRef.current = 0;
-                return; // Stop retrying on permanent errors
-            }
+            // Mark as attempted - NEVER retry automatically
+            hasAttemptedRef.current = true;
+            hasSyncedRef.current = false;
             
-            // For 500 errors or network errors, allow manual retry up to MAX_RETRIES
-            if ((status === 500 || !status) && retryCountRef.current < MAX_RETRIES) {
-                retryCountRef.current += 1;
-                // Retry after exponential backoff
-                const delay = Math.min(1000 * Math.pow(2, retryCountRef.current - 1), 5000);
-                console.log(`🔄 Will retry user sync in ${delay}ms (attempt ${retryCountRef.current + 1}/${MAX_RETRIES + 1})...`);
-                
-                setTimeout(() => {
-                    // Only retry if still signed in and not already synced
-                    if (isSignedIn && !hasSyncedRef.current && !syncUserMutation.isPending) {
-                        syncUserMutation.mutate();
-                    }
-                }, delay);
-            } else {
-                // Max retries reached or other error
-                hasAttemptedRef.current = true;
-                retryCountRef.current = 0;
-            }
+            // Log error but don't crash the app
+            // User can manually retry if needed
         }
     });
 
@@ -67,24 +44,32 @@ export const useUserSync = ()=>{
         if (isLoaded && !isSignedIn) {
             hasSyncedRef.current = false;
             hasAttemptedRef.current = false;
-            retryCountRef.current = 0;
+            syncTriggeredRef.current = false;
         }
     }, [isLoaded, isSignedIn]);
 
-    // Only sync once when user is loaded and signed in
+    // CRITICAL: Only sync ONCE per authenticated session - prevent infinite loops
     useEffect(()=>{
-        // Only sync if: user is loaded, signed in, not already synced, not currently syncing, and haven't attempted yet
+        // Only sync if ALL conditions are met:
+        // 1. Auth is loaded
+        // 2. User is signed in
+        // 3. Not already synced
+        // 4. Haven't attempted yet
+        // 5. Not currently syncing
+        // 6. Haven't triggered sync in this session
         if (
             isLoaded && 
             isSignedIn && 
             !hasSyncedRef.current && 
             !hasAttemptedRef.current &&
-            !syncUserMutation.isPending
+            !syncUserMutation.isPending &&
+            !syncTriggeredRef.current
         ) {
-            console.log("🔄 Starting user sync...");
+            syncTriggeredRef.current = true; // Prevent re-trigger
+            console.log("🔄 Starting user sync (one-time)...");
             syncUserMutation.mutate();
         }
-    }, [isLoaded, isSignedIn]); // Only depend on auth state, not mutation state
+    }, [isLoaded, isSignedIn]); // Only depend on auth state - NEVER on mutation state
     
     return null;
 }; 

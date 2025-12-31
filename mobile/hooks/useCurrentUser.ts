@@ -18,11 +18,11 @@ export const useCurrentUser = () => {
         const response = await userApi.getCurrentUser(api);
         return response.data.user;
       } catch (err: any) {
-        // If 404, user doesn't exist yet (needs sync) - return null
+        // If 404, user doesn't exist yet (needs sync) - return null (not an error)
         if (err?.response?.status === 404) {
           return null;
         }
-        // For other errors, throw to trigger retry
+        // For other errors, throw to trigger retry (but limited)
         throw err;
       }
     },
@@ -30,17 +30,17 @@ export const useCurrentUser = () => {
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     retry: (failureCount, error: any) => {
-      // Don't retry on 4xx errors (client errors including 404)
+      // CRITICAL: Don't retry on any client errors (4xx including 404)
       if (error?.response?.status >= 400 && error?.response?.status < 500) {
         return false;
       }
-      // Retry up to 2 times for server errors or network errors
-      return failureCount < 2;
+      // Only retry once on server errors (5xx) or network errors
+      return failureCount < 1;
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Max 5s delay
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchOnMount: false, // Don't refetch on mount if data exists
-    refetchOnReconnect: true, // Only refetch on reconnect
+    retryDelay: 2000, // Fixed 2s delay for single retry
+    refetchOnWindowFocus: false, // CRITICAL: Don't refetch on window focus
+    refetchOnMount: false, // CRITICAL: Don't refetch on mount if data exists
+    refetchOnReconnect: false, // CRITICAL: Don't auto-refetch on reconnect (prevents loops)
     // Don't block UI - return null on 404
     throwOnError: false,
   });

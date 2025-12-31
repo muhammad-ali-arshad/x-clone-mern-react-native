@@ -38,11 +38,34 @@ const ProfileScreens = () => {
     refetch: refetchProfile,
   } = useProfile();
 
+  // CRITICAL: Show loading state while fetching user
   if (isLoading) {
     return (
       <View className="flex-1 bg-white items-center justify-center">
         <ActivityIndicator size="large" color="#1DA1F2" />
       </View>
+    );
+  }
+
+  // CRITICAL: Handle null user - user might not be synced yet
+  if (!currentUser) {
+    return (
+      <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+        <View className="flex-1 items-center justify-center px-4">
+          <Text className="text-xl font-bold text-gray-900 mb-2">User Not Found</Text>
+          <Text className="text-gray-500 text-center mb-4">
+            Your profile hasn't been synced yet. Please wait or try refreshing.
+          </Text>
+          <TouchableOpacity
+            className="bg-blue-500 px-6 py-3 rounded-full"
+            onPress={() => {
+              refetchProfile();
+            }}
+          >
+            <Text className="text-white font-semibold">Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -52,9 +75,9 @@ const ProfileScreens = () => {
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100">
         <View>
           <Text className="text-xl font-bold text-gray-900">
-            {currentUser.firstName} {currentUser.lastName}
+            {currentUser?.firstName || ""} {currentUser?.lastName || ""}
           </Text>
-          <Text className="text-gray-500 text-sm">{userPosts.length} Posts</Text>
+          <Text className="text-gray-500 text-sm">{userPosts?.length || 0} Posts</Text>
         </View>
         <SignOutButton />
       </View>
@@ -77,7 +100,7 @@ const ProfileScreens = () => {
         <Image
           source={{
             uri:
-              currentUser.bannerImage ||
+              currentUser?.bannerImage ||
               "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=400&fit=crop",
           }}
           className="w-full h-48"
@@ -87,7 +110,7 @@ const ProfileScreens = () => {
         <View className="px-4 pb-4 border-b border-gray-100">
           <View className="flex-row justify-between items-end -mt-16 mb-4">
             <Image
-              source={{ uri: currentUser.profilePicture }}
+              source={{ uri: currentUser?.profilePicture || "https://via.placeholder.com/128" }}
               className="w-32 h-32 rounded-full border-4 border-white"
             />
             <TouchableOpacity
@@ -101,35 +124,39 @@ const ProfileScreens = () => {
           <View className="mb-4">
             <View className="flex-row items-center mb-1">
               <Text className="text-xl font-bold text-gray-900 mr-1">
-                {currentUser.firstName} {currentUser.lastName}
+                {currentUser?.firstName || ""} {currentUser?.lastName || ""}
               </Text>
               <Feather name="check-circle" size={20} color="#1DA1F2" />
             </View>
-            <Text className="text-gray-500 mb-2">@{currentUser.username}</Text>
-            <Text className="text-gray-900 mb-3">{currentUser.bio}</Text>
+            <Text className="text-gray-500 mb-2">@{currentUser?.username || "unknown"}</Text>
+            <Text className="text-gray-900 mb-3">{currentUser?.bio || ""}</Text>
 
-            <View className="flex-row items-center mb-2">
-              <Feather name="map-pin" size={16} color="#657786" />
-              <Text className="text-gray-500 ml-2">{currentUser.location}</Text>
-            </View>
+            {currentUser?.location && (
+              <View className="flex-row items-center mb-2">
+                <Feather name="map-pin" size={16} color="#657786" />
+                <Text className="text-gray-500 ml-2">{currentUser.location}</Text>
+              </View>
+            )}
 
-            <View className="flex-row items-center mb-3">
-              <Feather name="calendar" size={16} color="#657786" />
-              <Text className="text-gray-500 ml-2">
-                Joined {format(new Date(currentUser.createdAt), "MMMM yyyy")}
-              </Text>
-            </View>
+            {currentUser?.createdAt && (
+              <View className="flex-row items-center mb-3">
+                <Feather name="calendar" size={16} color="#657786" />
+                <Text className="text-gray-500 ml-2">
+                  Joined {format(new Date(currentUser.createdAt), "MMMM yyyy")}
+                </Text>
+              </View>
+            )}
 
             <View className="flex-row">
               <TouchableOpacity className="mr-6">
                 <Text className="text-gray-900">
-                  <Text className="font-bold">{currentUser.following?.length}</Text>
+                  <Text className="font-bold">{currentUser?.following?.length || 0}</Text>
                   <Text className="text-gray-500"> Following</Text>
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity>
                 <Text className="text-gray-900">
-                  <Text className="font-bold">{currentUser.followers?.length}</Text>
+                  <Text className="font-bold">{currentUser?.followers?.length || 0}</Text>
                   <Text className="text-gray-500"> Followers</Text>
                 </Text>
               </TouchableOpacity>
