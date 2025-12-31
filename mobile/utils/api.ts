@@ -12,7 +12,10 @@ import {useMemo} from "react";
  console.log("🌐 API Base URL:", API_BASE_URL);
 
  export const createApiClient = (getToken: () => Promise<string | null>): AxiosInstance => {
-    const api = axios.create({ baseURL: API_BASE_URL });
+    const api = axios.create({ 
+      baseURL: API_BASE_URL,
+      timeout: 30000, // 30 second timeout for all requests
+    });
   
     api.interceptors.request.use(
       async (config) => {

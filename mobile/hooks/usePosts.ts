@@ -14,6 +14,20 @@ export const usePosts = (username?: string) => {
     queryKey: username ? ["userPosts", username] : ["posts"],
     queryFn: () => (username ? postApi.getUserPosts(api, username) : postApi.getPosts(api)),
     select: (response) => response.data.posts,
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    retry: (failureCount, error: any) => {
+      // Don't retry on 4xx errors (client errors)
+      if (error?.response?.status >= 400 && error?.response?.status < 500) {
+        return false;
+      }
+      // Retry up to 2 times on server errors or network errors
+      return failureCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Max 5s delay
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: false, // Don't refetch on mount if data exists
+    refetchOnReconnect: true, // Only refetch on reconnect
   });
 
   const likePostMutation = useMutation({

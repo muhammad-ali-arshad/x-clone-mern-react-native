@@ -28,15 +28,19 @@ export const useCurrentUser = () => {
     },
     enabled: isLoaded && isSignedIn, // Only fetch when user is signed in
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     retry: (failureCount, error: any) => {
-      // Don't retry on 404 (user not found) - this is expected before sync
-      if (error?.response?.status === 404) {
+      // Don't retry on 4xx errors (client errors including 404)
+      if (error?.response?.status >= 400 && error?.response?.status < 500) {
         return false;
       }
-      // Retry up to 2 times for other errors
+      // Retry up to 2 times for server errors or network errors
       return failureCount < 2;
     },
-    retryDelay: 1000,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000), // Max 5s delay
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: false, // Don't refetch on mount if data exists
+    refetchOnReconnect: true, // Only refetch on reconnect
     // Don't block UI - return null on 404
     throwOnError: false,
   });
