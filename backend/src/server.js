@@ -102,9 +102,48 @@ app.get("/api/health/db", async (req, res) => {
 
   try {
     const mongoose = (await import("mongoose")).default;
-    const readyState = mongoose.connection.readyState;
+    const { connectDB } = await import("./config/db.js");
+    let readyState = mongoose.connection.readyState;
     
     // readyState values: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+    
+    // If not connected, attempt to connect (Vercel serverless needs connection on cold start)
+    if (readyState === 0 || readyState === 3) {
+      console.log("🔌 MongoDB not connected, attempting connection...");
+      try {
+        await connectDB();
+        readyState = mongoose.connection.readyState;
+      } catch (connectError) {
+        clearTimeout(timeout);
+        console.error("MongoDB connection attempt failed:", connectError.message);
+        
+        // Check if MONGO_URI is missing
+        const { ENV } = await import("./config/env.js");
+        const hasMongoUri = !!ENV.MONGO_URI;
+        
+        return res.status(503).json({
+          status: "not_connected",
+          readyState: 0,
+          message: "Failed to connect to database",
+          error: connectError.message || "Connection failed",
+          hasMongoUri: hasMongoUri, // Helpful for debugging (true/false only)
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+    
+    // If connection is in progress, wait a bit
+    if (readyState === 2) {
+      // Wait up to 3 seconds for connection to complete
+      let attempts = 0;
+      while (mongoose.connection.readyState === 2 && attempts < 6) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attempts++;
+      }
+      readyState = mongoose.connection.readyState;
+    }
+    
+    // Check if now connected
     if (readyState === 1) {
       // Verify connection is actually working with a ping
       try {
@@ -129,23 +168,19 @@ app.get("/api/health/db", async (req, res) => {
           status: "not_connected",
           readyState: readyState,
           error: "Connection ping failed",
+          message: "Database connection exists but ping failed",
           timestamp: new Date().toISOString(),
         });
       }
-    } else if (readyState === 2) {
-      clearTimeout(timeout);
-      return res.status(503).json({
-        status: "connecting",
-        readyState: readyState,
-        message: "Database connection in progress",
-        timestamp: new Date().toISOString(),
-      });
     } else {
+      // Still not connected after attempt
       clearTimeout(timeout);
+      const { ENV } = await import("./config/env.js");
       return res.status(503).json({
         status: "not_connected",
         readyState: readyState,
-        message: "Database not connected",
+        message: "Database not connected after connection attempt",
+        hasMongoUri: !!ENV.MONGO_URI, // Helpful for debugging
         timestamp: new Date().toISOString(),
       });
     }
