@@ -10,26 +10,10 @@ export const usePosts = (username?: string) => {
     isLoading,
     error,
     refetch,
-    isRefetching,
   } = useQuery({
     queryKey: username ? ["userPosts", username] : ["posts"],
     queryFn: () => (username ? postApi.getUserPosts(api, username) : postApi.getPosts(api)),
-    select: (response) => {
-      // Always return an array, even if response is null/undefined
-      if (!response || !response.data) return [];
-      return response.data.posts || [];
-    },
-    staleTime: 30000, // Consider data fresh for 30 seconds
-    retry: (failureCount, error: any) => {
-      const status = error?.response?.status;
-      // Don't retry on 404, retry on 500 or network errors
-      if (status === 404) return false;
-      // Retry up to 2 times for other errors
-      return failureCount < 2;
-    },
-    retryDelay: 1000,
-    // Don't throw errors - handle gracefully
-    throwOnError: false,
+    select: (response) => response.data.posts,
   });
 
   const likePostMutation = useMutation({
@@ -62,7 +46,6 @@ export const usePosts = (username?: string) => {
     isLoading,
     error,
     refetch,
-    isRefetching,
     toggleLike: (postId: string) => likePostMutation.mutate(postId),
     deletePost: (postId: string) => deletePostMutation.mutate(postId),
     checkIsLiked,
