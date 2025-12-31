@@ -17,9 +17,14 @@ import {useMemo} from "react";
     api.interceptors.request.use(
       async (config) => {
         try {
-          // Add User-Agent to identify as mobile app (prevents Arcjet bot detection)
+          // Add headers to identify as mobile app (bypasses Arcjet bot detection)
           config.headers['User-Agent'] = 'X-Clone-Mobile-App/1.0.0';
           config.headers['X-Client-Type'] = 'mobile-app';
+          
+          // Set Content-Type for JSON requests (if not already set and not FormData)
+          if (!config.headers['Content-Type'] && !(config.data instanceof FormData)) {
+            config.headers['Content-Type'] = 'application/json';
+          }
           
           const token = await getToken();
           if (token) {
@@ -39,11 +44,13 @@ import {useMemo} from "react";
       (response) => response,
       (error) => {
         if (error.response) {
-          console.error("API Error:", error.response.status, error.response.data);
+          // Only log non-404 errors (404 is expected for user not found before sync)
+          if (error.response.status !== 404) {
+            console.error("API Error:", error.response.status, error.response.data);
+          }
         } else if (error.request) {
           console.error("Network Error:", error.request);
         } else {
-
           console.error("Error:", error.message);
         }
         return Promise.reject(error);
@@ -62,12 +69,15 @@ import {useMemo} from "react";
     syncUser: (api: AxiosInstance) => api.post("/users/sync"),
     getCurrentUser: (api: AxiosInstance) => api.get("/users/me"),
     updateProfile: (api: AxiosInstance, data: any) => api.put("/users/profile", data),
+    getUserProfile: (api: AxiosInstance, username: string) => 
+      api.get(`/users/profile/${username}`),
   };
   
   export const postApi = {
     createPost: (api: AxiosInstance, data: { content: string; image?: string }) =>
       api.post("/posts", data),
     getPosts: (api: AxiosInstance) => api.get("/posts"),
+    getPost: (api: AxiosInstance, postId: string) => api.get(`/posts/${postId}`),
     getUserPosts: (api: AxiosInstance, username: string) => api.get(`/posts/user/${username}`),
     likePost: (api: AxiosInstance, postId: string) => api.post(`/posts/${postId}/like`),
     deletePost: (api: AxiosInstance, postId: string) => api.delete(`/posts/${postId}`),
@@ -76,4 +86,12 @@ import {useMemo} from "react";
   export const commentApi = {
     createComment: (api: AxiosInstance, postId: string, content: string) =>
       api.post(`/comments/post/${postId}`, { content }),
+    getComments: (api: AxiosInstance, postId: string) => 
+      api.get(`/comments/post/${postId}`),
+  };
+  
+  export const notificationApi = {
+    getNotifications: (api: AxiosInstance) => api.get("/notifications"),
+    deleteNotification: (api: AxiosInstance, notificationId: string) => 
+      api.delete(`/notifications/${notificationId}`),
   };

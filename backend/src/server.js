@@ -19,10 +19,22 @@ app.use(express.json());
 
 // Clerk middleware - handles authentication
 try {
-  app.use(clerkMiddleware());
+  if (!ENV.CLERK_SECRET_KEY) {
+    console.error("❌ CLERK_SECRET_KEY is not set. Protected routes will fail.");
+    // In production, this is critical - but don't exit in serverless
+    if (ENV.NODE_ENV === "production") {
+      console.error("⚠️  Running without Clerk authentication. Protected routes will return 500 errors.");
+    }
+  } else {
+    app.use(clerkMiddleware());
+    console.log("✅ Clerk middleware initialized");
+  }
 } catch (error) {
-  console.error("Clerk middleware initialization error:", error);
-  // Continue without Clerk in case of misconfiguration (for debugging)
+  console.error("❌ Clerk middleware initialization error:", error);
+  // In production, log but continue (serverless functions can't exit)
+  if (ENV.NODE_ENV === "production") {
+    console.error("⚠️  Server will continue but protected routes may fail.");
+  }
 }
 
 // Arcjet middleware - rate limiting and security
@@ -52,11 +64,23 @@ app.use((req, res) => {
 // error handling middleware (must be last)
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
+  console.error("Error stack:", err.stack);
+  
   // Don't leak error details in production
   const message = ENV.NODE_ENV === "production" 
     ? "Internal server error" 
     : err.message || "Internal server error";
-  res.status(err.status || 500).json({ error: message });
+  
+  // Provide more context in development
+  const response = ENV.NODE_ENV === "production"
+    ? { error: message }
+    : { 
+        error: message,
+        details: err.message,
+        stack: err.stack
+      };
+  
+  res.status(err.status || 500).json(response);
 });
 
 // Only start server in local development

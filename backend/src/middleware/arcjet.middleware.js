@@ -1,8 +1,14 @@
 import { aj } from "../config/arcjet.js";
+import { ENV } from "../config/env.js";
 
 // Arcjet middleware for rate limiting, bot protection, and security
 
 export const arcjetMiddleware = async (req, res, next) => {
+  // Skip if Arcjet is not configured
+  if (!ENV.ARCJET_KEY || ENV.ARCJET_KEY === "dummy-key-for-development") {
+    return next();
+  }
+  
   try {
     // Allow mobile app requests to bypass bot detection
     const isMobileApp = req.headers['x-client-type'] === 'mobile-app' || 

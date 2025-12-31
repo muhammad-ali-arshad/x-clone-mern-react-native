@@ -18,7 +18,13 @@ export const getComments = asyncHandler(async (req, res) => {
 export const createComment = asyncHandler(async (req, res) => {
   const { userId } = getAuth(req);
   const { postId } = req.params;
-  const { content } = req.body;
+  
+  // Validate req.body exists
+  if (!req.body) {
+    return res.status(400).json({ error: "Request body is required" });
+  }
+  
+  const { content } = req.body || {};
 
   if (!content || content.trim() === "") {
     return res.status(400).json({ error: "Comment content is required" });

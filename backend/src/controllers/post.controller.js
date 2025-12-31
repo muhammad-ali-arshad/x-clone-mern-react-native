@@ -3,23 +3,34 @@ import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 import { getAuth } from "@clerk/express";
 import cloudinary from "../config/cloudinary.js";
+import { ENV } from "../config/env.js";
 
 import Notification from "../models/notification.model.js";
 import Comment from "../models/comment.model.js";
 
 export const getPosts = asyncHandler(async (req, res) => {
-  const posts = await Post.find()
-    .sort({ createdAt: -1 })
-    .populate("user", "username firstName lastName profilePicture")
-    .populate({
-      path: "comments",
-      populate: {
-        path: "user",
-        select: "username firstName lastName profilePicture",
-      },
-    });
+  try {
+    const posts = await Post.find()
+      .sort({ createdAt: -1 })
+      .populate("user", "username firstName lastName profilePicture")
+      .populate({
+        path: "comments",
+        populate: {
+          path: "user",
+          select: "username firstName lastName profilePicture",
+        },
+      })
+      .lean(); // Use lean() for better performance
 
-  res.status(200).json({ posts });
+    // Filter out posts with deleted users
+    const validPosts = posts.filter(post => post.user !== null);
+
+    res.status(200).json({ posts: validPosts });
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    // Return empty array instead of crashing
+    res.status(200).json({ posts: [] });
+  }
 });
 
 export const getPost = asyncHandler(async (req, res) => {
@@ -41,28 +52,43 @@ export const getPost = asyncHandler(async (req, res) => {
 });
 
 export const getUserPosts = asyncHandler(async (req, res) => {
-  const { username } = req.params;
+  try {
+    const { username } = req.params;
 
-  const user = await User.findOne({ username });
-  if (!user) return res.status(404).json({ error: "User not found" });
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-  const posts = await Post.find({ user: user._id })
-    .sort({ createdAt: -1 })
-    .populate("user", "username firstName lastName profilePicture")
-    .populate({
-      path: "comments",
-      populate: {
-        path: "user",
-        select: "username firstName lastName profilePicture",
-      },
-    });
+    const posts = await Post.find({ user: user._id })
+      .sort({ createdAt: -1 })
+      .populate("user", "username firstName lastName profilePicture")
+      .populate({
+        path: "comments",
+        populate: {
+          path: "user",
+          select: "username firstName lastName profilePicture",
+        },
+      })
+      .lean(); // Use lean() for better performance
 
-  res.status(200).json({ posts });
+    // Filter out posts with deleted users
+    const validPosts = posts.filter(post => post.user !== null);
+
+    res.status(200).json({ posts: validPosts });
+  } catch (error) {
+    console.error("Error fetching user posts:", error);
+    res.status(200).json({ posts: [] });
+  }
 });
 
 export const createPost = asyncHandler(async (req, res) => {
   const { userId } = getAuth(req);
-  const { content } = req.body;
+  
+  // Validate req.body exists
+  if (!req.body) {
+    return res.status(400).json({ error: "Request body is required" });
+  }
+  
+  const { content } = req.body || {};
   const imageFile = req.file;
 
   if (!content && !imageFile) {
@@ -76,6 +102,19 @@ export const createPost = asyncHandler(async (req, res) => {
 
   // upload image to Cloudinary if provided
   if (imageFile) {
+    // Check file size before processing
+    if (imageFile.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: "Image size exceeds 5MB limit" });
+    }
+    
+    // Check if Cloudinary is configured
+    if (!ENV.CLOUDINARY_CLOUD_NAME || !ENV.CLOUDINARY_API_KEY || !ENV.CLOUDINARY_API_SECRET) {
+      return res.status(500).json({ 
+        error: "Image upload service not configured",
+        message: "Cloudinary credentials are missing. Please contact administrator."
+      });
+    }
+    
     try {
       // convert buffer to base64 for cloudinary
       const base64Image = `data:${imageFile.mimetype};base64,${imageFile.buffer.toString(
@@ -94,7 +133,10 @@ export const createPost = asyncHandler(async (req, res) => {
       imageUrl = uploadResponse.secure_url;
     } catch (uploadError) {
       console.error("Cloudinary upload error:", uploadError);
-      return res.status(400).json({ error: "Failed to upload image" });
+      return res.status(400).json({ 
+        error: "Failed to upload image",
+        message: uploadError.message || "Image upload failed. Please try again."
+      });
     }
   }
 

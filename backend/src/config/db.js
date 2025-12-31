@@ -9,9 +9,15 @@ if (!cached) {
 }
 
 export const connectDB = async () => {
-  // If already connected, return the existing connection
-  if (cached.conn) {
+  // If already connected and ready, return the existing connection
+  if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
+  }
+
+  // If connection exists but is not ready, reset it
+  if (cached.conn && mongoose.connection.readyState !== 1) {
+    cached.conn = null;
+    cached.promise = null;
   }
 
   // If connection is in progress, wait for it
@@ -31,11 +37,20 @@ export const connectDB = async () => {
     cached.promise = mongoose.connect(ENV.MONGO_URI, opts).then((mongoose) => {
       console.log("Connected to DB SUCCESSFULLY ✅");
       return mongoose;
+    }).catch((error) => {
+      cached.promise = null;
+      console.error("Error connecting to MONGODB:", error);
+      throw error;
     });
   }
 
   try {
     cached.conn = await cached.promise;
+    
+    // Verify connection is actually ready
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error("Database connection not ready");
+    }
   } catch (e) {
     cached.promise = null;
     console.error("Error connecting to MONGODB:", e);
